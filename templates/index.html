@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Diary 2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-color: #38bdf8;
+            --text-main: #f8fafc;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0; padding: 0; padding-bottom: 80px;
+            overflow-x: hidden;
+        }
+        .container { padding: 20px; }
+        
+        /* Виджет графика */
+        .chart-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Список записей */
+        .entry-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 15px;
+            animation: slideUp 0.5s ease-out;
+        }
+        .entry-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .score-badge {
+            background: var(--accent-color);
+            color: #000;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+        .entry-text { font-size: 0.95em; line-height: 1.4; opacity: 0.9; }
+
+        /* Навигация 2026 */
+        .nav-bar {
+            position: fixed; bottom: 20px; left: 20px; right: 20px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(15px);
+            height: 65px;
+            border-radius: 30px;
+            display: flex; justify-content: space-around; align-items: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .nav-item { color: #64748b; font-size: 1.2em; cursor: pointer; transition: 0.3s; }
+        .nav-item.active { color: var(--accent-color); transform: translateY(-5px); }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 id="view-title">Ваш прогресс</h2>
+    
+    <!-- Секция Графика -->
+    <div id="stats-view" class="view">
+        <div class="chart-card">
+            <canvas id="scoreChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Секция Списка -->
+    <div id="list-view" class="view" style="display:none;">
+        <div id="entries-container">
+            <!-- Записи подгрузятся сюда -->
+        </div>
+    </div>
+</div>
+
+<nav class="nav-bar">
+    <div class="nav-item active" onclick="showView('stats', this)"><i class="fa-solid fa-chart-line"></i></div>
+    <div class="nav-item" onclick="showView('list', this)"><i class="fa-solid fa-list-ul"></i></div>
+    <div class="nav-item" onclick="showView('calendar', this)"><i class="fa-solid fa-calendar-days"></i></div>
+    <div class="nav-item" onclick="Telegram.WebApp.close()"><i class="fa-solid fa-comment-dots"></i></div>
+</nav>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    function showView(viewName, el) {
+        document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        
+        if(viewName === 'stats') document.getElementById('stats-view').style.display = 'block';
+        if(viewName === 'list') {
+            document.getElementById('list-view').style.display = 'block';
+            loadEntries();
+        }
+        el.classList.add('active');
+    }
+
+    // Имитация загрузки данных (в реальности берем из API бота)
+    function loadEntries() {
+        const container = document.getElementById('entries-container');
+        container.innerHTML = `
+            <div class="entry-card">
+                <div class="entry-header"><span>Сегодня, 14:20</span> <span class="score-badge">8/10</span></div>
+                <div class="entry-text">Обсудили цели на неделю. Чувствую прилив сил!</div>
+                <div style="margin-top:10px;"><small><i class="fa-regular fa-face-smile"></i> Реакция добавлена</small></div>
+            </div>
+        `;
+    }
+
+    // Инициализация графика
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+            datasets: [{
+                label: 'Состояние',
+                data: [5, 7, 6, 8, 7, 9, 8],
+                borderColor: '#38bdf8',
+                tension: 0.4,
+                fill: true,
+                backgroundColor: 'rgba(56, 189, 248, 0.1)'
+            }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { display: false } } }
+    });
+</script>
+</body>
+</html>

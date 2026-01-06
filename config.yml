@@ -1,0 +1,7 @@
+tunnel: 9a3b44e2-35e7-47de-b105-c98d906b6c59
+credentials-file: /root/.cloudflared/9a3b44e2-35e7-47de-b105-c98d906b6c59.json
+
+ingress:
+  - hostname: diary.netoxicalex.ru
+    service: http://127.0.0.1:8085
+  - service: http_status:404
