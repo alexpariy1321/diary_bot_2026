@@ -1,5 +1,6 @@
 import asyncio
 import os
+import pytz
 from datetime import datetime
 from dotenv import load_dotenv
 import gspread
@@ -70,9 +71,13 @@ async def handle_text(message: Message):
     except:
         reply = "Записал мысль ✅"
     
+        # Получаем точное время по Москве
+    msk_tz = pytz.timezone('Europe/Moscow')
+    msk_now = datetime.now(msk_tz).strftime("%Y-%m-%d %H:%M:%S")
+
     # В таблицу (теперь 8 колонок)
     row = [
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        msk_now,     # <-- Исправили здесь: теперь тут московское время
         str(user.id),
         username,    # Новая колонка C
         full_name,   # Новая колонка D
@@ -81,6 +86,7 @@ async def handle_text(message: Message):
         "",          # context (колонка G)
         reply        # колонка H
     ]
+
     sheet.append_row(row)
     
     await message.reply(reply + "\n\n💭 Как себя ощущаешь?", reply_markup=MOOD_BUTTONS)
@@ -119,5 +125,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
