@@ -83,12 +83,12 @@ async def handle_text(message: Message):
     ]
     sheet.append_row(row)
     
-    await message.reply(reply + "\n\n💭 Настроение?", reply_markup=MOOD_BUTTONS)
+    await message.reply(reply + "\n\n💭 Как себя ощущаешь?", reply_markup=MOOD_BUTTONS)
 
 @dp.callback_query(F.data.startswith("mood:"))
 async def process_mood(callback: CallbackQuery):
     mood = callback.data.split(":", 1)[1]
-    new_text = callback.message.text.split("💭")[0] + f"💭 {mood}\n\n📍 Контекст?"
+    new_text = callback.message.text.split("💭")[0] + f"💭 {mood}\n\n📍 Где это проявляется наиболее заметно?"
     
     # Обновляем в таблице
     last_row = len(sheet.get_all_values())
@@ -119,3 +119,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
