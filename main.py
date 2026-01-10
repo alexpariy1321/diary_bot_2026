@@ -1,130 +1,107 @@
-import asyncio
 import os
+import asyncio
 import pytz
 from datetime import datetime
 from dotenv import load_dotenv
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 import gspread
-from google.oauth2.service_account import Credentials
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import CommandStart
+from oauth2client.service_account import ServiceAccountCredentials
 from groq import Groq
 
+# 1. Загрузка конфигурации
 load_dotenv()
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
-GOOGLE_CREDS_PATH = os.getenv("GOOGLE_CREDS_PATH")
+TOKEN = os.getenv("BOT_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Google Sheets
-scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-creds = Credentials.from_service_account_file(GOOGLE_CREDS_PATH, scopes=scope)
-client = gspread.authorize(creds)
-sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
+# !!! ОБЯЗАТЕЛЬНО ПОСТАВЬ СВОЙ IP ТУТ !!!
+DASHBOARD_URL = "http://213.21.242.35:8501" 
 
-# Groq
-client_groq = Groq(api_key=GROQ_API_KEY)
-
-# Бот
-bot = Bot(token=BOT_TOKEN)
+# 2. Инициализация клиентов
+client = Groq(api_key=GROQ_API_KEY)
+bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Кнопки
-MOOD_BUTTONS = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="😔 тяжело", callback_data="mood:тяжело")],
-    [InlineKeyboardButton(text="😠 злюсь", callback_data="mood:злюсь")],
-    [InlineKeyboardButton(text="😊 ок", callback_data="mood:ок")]
-])
+# Google Sheets
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("creds.json", scope)
+g_client = gspread.authorize(creds)
+sheet = g_client.open("English_Bot_2026").sheet1
 
-CONTEXT_BUTTONS = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="💼 работа", callback_data="ctx:работа")],
-    [InlineKeyboardButton(text="🏠 дом", callback_data="ctx:дом")],
-    [InlineKeyboardButton(text="👥 люди", callback_data="ctx:люди")],
-    [InlineKeyboardButton(text="🤷 другое", callback_data="ctx:другое")]
-])
+# 3. Функция клавиатуры
+def get_main_keyboard(user_id):
+    # Формируем URL дашборда с ID пользователя
+    webapp_url = f"{DASHBOARD_URL}/?user_id={user_id}"
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(
+                    text="📔 Открыть мой дневник",
+                    web_app=WebAppInfo(url=webapp_url)
+                )
+            ]
+        ],
+        resize_keyboard=True
+    )
+    return keyboard
 
-@dp.message(CommandStart())
-async def start_handler(message: Message):
-    await message.reply("📝 Пиши мысли, я запишу и поддержу")
+# 4. Обработчики
+@dp.message(Command("start"))
+async def start_handler(message: types.Message):
+    kb = get_main_keyboard(message.from_user.id)
+    await message.answer(
+        f"Привет, {message.from_user.full_name}! Я твой личный дневник. Напиши что-нибудь!",
+        reply_markup=kb
+    )
 
 @dp.message(F.text)
-async def handle_text(message: Message):
-    text = message.text
+async def message_handler(message: types.Message):
     user = message.from_user
+    text = message.text
     
-    # Получаем данные пользователя
-    username = f"@{user.username}" if user.username else "нет"
-    full_name = user.full_name
+    # Визуальный эффект печати
+    await bot.send_chat_action(message.chat.id, "typing")
     
-    # Groq ответ (оставляем как есть)
     try:
-        completion = client_groq.chat.completions.create(
+        # Ответ от Groq
+        completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Ты бот-поддержка. 1 короткое тёплое предложение без советов. Пользоатель может быть и мжчина и женщина, так что текст всегда нейтральный."},
-                {"role": "user", "content": text}
+                {"role": "system", "content": "Ты — поддерживающий и мудрый друг. Отвечай кратко на русском."},
+                {"role": "user", "content": text},
             ],
-            model="llama-3.3-70b-versatile",
-            max_tokens=40
+            model="llama3-8b-8192",
         )
         reply = completion.choices[0].message.content
-    except:
-        reply = "Записал мысль ✅"
-    
-        # Получаем точное время по Москве
-    msk_tz = pytz.timezone('Europe/Moscow')
-    msk_now = datetime.now(msk_tz).strftime("%Y-%m-%d %H:%M:%S")
 
-    # В таблицу (теперь 8 колонок)
-    row = [
-        msk_now,     # <-- Исправили здесь: теперь тут московское время
-        str(user.id),
-        username,    # Новая колонка C
-        full_name,   # Новая колонка D
-        text,        # Теперь колонка E
-        "",          # mood (колонка F)
-        "",          # context (колонка G)
-        reply        # колонка H
-    ]
+        # Московское время для таблицы
+        msk_tz = pytz.timezone('Europe/Moscow')
+        now_msk = datetime.now(msk_tz).strftime("%Y-%m-%d %H:%M:%S")
 
-    sheet.append_row(row)
-    
-    await message.reply(reply + "\n\n💭 Как себя ощущаешь?", reply_markup=MOOD_BUTTONS)
+        # Запись в таблицу (8 колонок)
+        row = [
+            now_msk, 
+            str(user.id), 
+            user.username or "", 
+            user.full_name, 
+            text, 
+            "", "", # mood и context
+            reply
+        ]
+        sheet.append_row(row)
 
-@dp.callback_query(F.data.startswith("mood:"))
-async def process_mood(callback: CallbackQuery):
-    mood = callback.data.split(":", 1)[1]
-    new_text = callback.message.text.split("💭")[0] + f"💭 {mood}\n\n📍 Где это проявляется наиболее заметно?"
-    
-    # Обновляем в таблице
-    last_row = len(sheet.get_all_values())
-    row_data = sheet.row_values(last_row)
-    row_data[5] = mood
-    sheet.update(f'A{last_row}:H{last_row}', [row_data])
-    
-    await callback.message.edit_text(new_text, reply_markup=CONTEXT_BUTTONS)
-    await callback.answer()
+        # Отправляем ответ с кнопкой Mini App
+        await message.answer(reply, reply_markup=get_main_keyboard(user.id))
 
-@dp.callback_query(F.data.startswith("ctx:"))
-async def process_context(callback: CallbackQuery):
-    ctx = callback.data.split(":", 1)[1]
-    new_text = callback.message.text.split("📍")[0] + f"📍 Контекст: {ctx}"
-    
-    # Обновляем в таблице
-    last_row = len(sheet.get_all_values())
-    row_data = sheet.row_values(last_row)
-    row_data[6] = ctx
-    sheet.update(f'A{last_row}:H{last_row}', [row_data])
-    
-    await callback.message.edit_text(new_text)
-    await callback.answer("✅ Сохранено")
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        await message.answer("Извини, произошла ошибка при сохранении записи.")
 
+# 5. Запуск
 async def main():
-    print("🚀 Бот запущен")
+    print("Бот запущен...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
