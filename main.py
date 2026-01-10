@@ -62,14 +62,25 @@ async def message_handler(message: types.Message):
     
     try:
         # ИСПРАВЛЕНО: Актуальная модель Groq
+                # Запрос к Groq с новой системной ролью
         completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Ты — поддерживающий друг. Отвечай кратко на русском."},
+                {
+                    "role": "system", 
+                    "content": (
+                        "Ты — психолог-гуманист. Твоя задача — только мягкая поддержка, "
+                        "никаких консультаций и решений проблем. На любые вопросы отвечай "
+                        "исключительно с точки зрения психологии. "
+                        "Строгое ограничение: не более 2 предложений. Отвечай на русском."
+                    )
+                },
                 {"role": "user", "content": text},
             ],
-            model="llama-3.3-70b-versatile", # Самая мощная на текущий момент
+            model="llama-3.3-70b-versatile",
+            max_tokens=100  # Дополнительная страховка длины
         )
         reply = completion.choices[0].message.content
+
 
         # Время по МСК
         msk_tz = pytz.timezone('Europe/Moscow')
@@ -90,3 +101,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
