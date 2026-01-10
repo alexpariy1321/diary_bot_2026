@@ -45,7 +45,7 @@ CONTEXT_BUTTONS = InlineKeyboardMarkup(inline_keyboard=[
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
-    await message.reply("📝 Пиши мысли, я запишу и поддержу", reply_markup=MOOD_BUTTONS)
+    await message.reply("📝 Пиши мысли, я запишу и поддержу")
 
 @dp.message(F.text)
 async def handle_text(message: Message):
@@ -60,7 +60,7 @@ async def handle_text(message: Message):
     try:
         completion = client_groq.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Ты бот-поддержка. 1 короткое тёплое предложение без советов."},
+                {"role": "system", "content": "Ты бот-поддержка. 1 короткое тёплое предложение без советов. Пользоатель может быть и мжчина и женщина, так что текст всегда нейтральный."},
                 {"role": "user", "content": text}
             ],
             model="llama-3.3-70b-versatile",
@@ -119,4 +119,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
