@@ -5,7 +5,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from groq import Groq
@@ -15,7 +15,7 @@ load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# !!! ОБЯЗАТЕЛЬНО ПОСТАВЬ СВОЙ IP ТУТ !!!
+# Твой IP и порт дашборда
 DASHBOARD_URL = "http://213.21.242.35:8501" 
 
 # 2. Инициализация клиентов
@@ -29,19 +29,11 @@ creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", sco
 g_client = gspread.authorize(creds)
 sheet = g_client.open("English_Bot_2026").sheet1
 
-# 3. Функция клавиатуры
-def get_main_keyboard(user_id):
-    # Формируем URL дашборда с ID пользователя
-    webapp_url = f"{DASHBOARD_URL}/?user_id={user_id}"
-    
+# 3. Клавиатура (теперь это просто текстовая кнопка)
+def get_main_keyboard():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [
-                KeyboardButton(
-                    text="📔 Открыть мой дневник",
-                    web_app=WebAppInfo(url=webapp_url)
-                )
-            ]
+            [KeyboardButton(text="📔 Посмотреть мой дневник")]
         ],
         resize_keyboard=True
     )
@@ -50,59 +42,51 @@ def get_main_keyboard(user_id):
 # 4. Обработчики
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
-    kb = get_main_keyboard(message.from_user.id)
     await message.answer(
-        f"Привет, {message.from_user.full_name}! Я твой личный дневник. Напиши что-нибудь!",
-        reply_markup=kb
+        f"Привет, {message.from_user.full_name}! 👋\nЯ записываю твои мысли в таблицу. Пиши всё, что на уме!",
+        reply_markup=get_main_keyboard()
     )
+
+# Обработка нажатия на кнопку "Посмотреть мой дневник"
+@dp.message(F.text == "📔 Посмотреть мой дневник")
+async def send_dashboard_link(message: types.Message):
+    user_url = f"{DASHBOARD_URL}/?user_id={message.from_user.id}"
+    await message.answer(f"Твоя статистика и записи доступны здесь:\n{user_url}")
 
 @dp.message(F.text)
 async def message_handler(message: types.Message):
     user = message.from_user
     text = message.text
     
-    # Визуальный эффект печати
     await bot.send_chat_action(message.chat.id, "typing")
     
     try:
-        # Ответ от Groq
+        # ИСПРАВЛЕНО: Актуальная модель Groq
         completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Ты — поддерживающий и мудрый друг. Отвечай кратко на русском."},
+                {"role": "system", "content": "Ты — поддерживающий друг. Отвечай кратко на русском."},
                 {"role": "user", "content": text},
             ],
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile", # Самая мощная на текущий момент
         )
         reply = completion.choices[0].message.content
 
-        # Московское время для таблицы
+        # Время по МСК
         msk_tz = pytz.timezone('Europe/Moscow')
         now_msk = datetime.now(msk_tz).strftime("%Y-%m-%d %H:%M:%S")
 
-        # Запись в таблицу (8 колонок)
-        row = [
-            now_msk, 
-            str(user.id), 
-            user.username or "", 
-            user.full_name, 
-            text, 
-            "", "", # mood и context
-            reply
-        ]
+        # Запись в таблицу
+        row = [now_msk, str(user.id), user.username or "", user.full_name, text, "", "", reply]
         sheet.append_row(row)
 
-        # Отправляем ответ с кнопкой Mini App
-        await message.answer(reply, reply_markup=get_main_keyboard(user.id))
+        await message.answer(reply, reply_markup=get_main_keyboard())
 
     except Exception as e:
         print(f"Ошибка: {e}")
-        await message.answer("Извини, произошла ошибка при сохранении записи.")
+        await message.answer("Запись сохранена, но нейросеть сейчас отдыхает.")
 
-# 5. Запуск
 async def main():
-    print("Бот запущен...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
-
