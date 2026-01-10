@@ -1,1 +1,9 @@
+streamlit
+pandas
+gspread
+oauth2client
+plotly
 pytz
+aiogram
+python-dotenv
+groq
