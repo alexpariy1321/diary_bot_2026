@@ -25,7 +25,7 @@ dp = Dispatcher()
 
 # Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("creds.json", scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 g_client = gspread.authorize(creds)
 sheet = g_client.open("English_Bot_2026").sheet1
 
@@ -105,3 +105,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
