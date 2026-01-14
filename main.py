@@ -27,7 +27,7 @@ dp = Dispatcher()
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 g_client = gspread.authorize(creds)
-sheet = g_client.open("English_Bot_2026").sheet1
+sheet = g_client.open("diary_book").sheet1
 
 # 3. Клавиатура (теперь это просто текстовая кнопка)
 def get_main_keyboard():
@@ -102,6 +102,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
