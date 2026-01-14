@@ -57,7 +57,7 @@ def load_data():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
     client = gspread.authorize(creds)
-    sheet = client.open("English_Bot_2026").sheet1 
+    sheet = client.open("diary_book").sheet1 
     all_values = sheet.get_all_values()
     
     if len(all_values) > 1:
@@ -111,3 +111,4 @@ try:
 
 except Exception as e:
     st.error(f"Критический сбой системы: {e}")
+
